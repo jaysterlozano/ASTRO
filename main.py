@@ -1,5 +1,8 @@
 # this file was created by Jay Lozano
 # Sources: goo.gl/2KMivS 
+# Coding help from Julian Van Bruannae, Jack Armanini, Shub Guar, and Jacob Brandis 
+# Sources for sound:
+# https://freesound.org/
 # now available in github
 
 '''
@@ -24,6 +27,9 @@ Changed the background colors and the font color
 Changed the transparency 
 Raised the frequency of the enemies so there are more falling, and 
 instead of getting stuck there was more of a risk/reward factor on trying to jump on the enemy to get a boost
+Added moving platforms to give another gamplay feature. 
+The moving platforms are moving at a decent speed so, you have to keep moving if you land on one
+Also added coins so when you got a coin your score would increase by 10. 
 
 
 
@@ -72,7 +78,6 @@ class Game:
         self.cloud_images = []
         self.cloud_images.append(pg.image.load(path.join(img_dir, 'cloud1.png'.format(1))).convert())
         # load sounds
-        # great place for creating sounds: https://www.bfxr.net/
         self.snd_dir = path.join(self.dir, 'snd')
         self.jump_sound = [pg.mixer.Sound(path.join(self.snd_dir, 'Jump25.wav')),
                             pg.mixer.Sound(path.join(self.snd_dir, 'Jump24.wav'))]
@@ -81,34 +86,32 @@ class Game:
     def new(self):
         self.score = 0
         # add all sprites to the pg group
-        # below no longer needed - using LayeredUpdate group
-        # self.all_sprites = pg.sprite.Group()
         self.all_sprites = pg.sprite.LayeredUpdates()
+        # create clouds
+        self.clouds = pg.sprite.Group()
         # create platforms group
         self.platforms = pg.sprite.Group()
-        # create clouds group
-        self.clouds = pg.sprite.Group()
-        # add powerups
+        #creates the moving platforms group
+        self.movingplatform = pg.sprite.Group()
+        # add powerups 
         self.powerups = pg.sprite.Group()
-        
+        #add coins 
+        self.coin = pg.sprite.Group()
+        #Adds mob timer
         self.mob_timer = 0
         # add a player 1 to the group
         self.player = Player(self)
         # add mobs
         self.mobs = pg.sprite.Group()
-        # no longer needed after passing self.groups in Sprites library file
-        # self.all_sprites.add(self.player)
         # instantiate new platform 
         for plat in PLATFORM_LIST:
-            # no longer need to assign to variable because we're passing self.groups in Sprite library
-            # p = Platform(self, *plat)
             Platform(self, *plat)
-            # no longer needed because we pass in Sprite lib file
-            # self.all_sprites.add(p)
-            # self.platforms.add(p)
+        # instantiates the moving platform
+        for mplat in MOVINGPFORM_LIST:
+            MovingPlatform(self, *mplat)
         for i in range(8):
-            c = Cloud(self)
-            c.rect.y += 500
+            m = MovingPlatform(self, *mplat)
+            m.rect.y += 500
         # load music
         pg.mixer.music.load(path.join(self.snd_dir, 'bg.mp3'))
         # call the run method
@@ -133,9 +136,6 @@ class Game:
         if now - self.mob_timer > 5000 + random.choice([-1000, -500, 0, 500, 1000]):
             self.mob_timer = now
             Mob(self)
-        ##### check for mob collisions ######
-        # now using collision mask to determine collisions
-        # can use rectangle collisions here first if we encounter performance issues
         mob_hits = pg.sprite.spritecollide(self.player, self.mobs, False, pg.sprite.collide_mask)
         if mob_hits:
             # can use mask collide here if mob count gets too high and creates performance issues
@@ -152,6 +152,18 @@ class Game:
 
         # check to see if player can jump - if falling
         if self.player.vel.y > 0:
+            mhits = pg.sprite.spritecollide(self.player, self.movingplatform, False)
+            if mhits:
+                find_mlowest = mhits[0]
+            for mhit in mhits:
+                if mhit.rect.bottom > find_mlowest.rect.bottom: 
+                    print("mhit rect bottom")
+                    find_mlowest = mhit
+                if self.player.pos.x < find_mlowest.rect.right + 10 and self.player.pos.x > find_mlowest.rect.left - 10: 
+                    if self.player.pos.y < find_mlowest.rect.centery:
+                        self.player.pos.y = find_mlowest.rect.top
+                        self.player.vel.y = 0
+                        self.player.jumping = False
             hits = pg.sprite.spritecollide(self.player, self.platforms, False)
             if hits:
                 # set var to be current hit in list to find which to 'pop' to when two or more collide with player
@@ -179,6 +191,7 @@ class Game:
             # creates slight scroll at the top based on player y velocity
             # scroll plats with player
             
+            
             for mob in self.mobs:
                 # creates slight scroll based on player y velocity
                 mob.rect.y += max(abs(self.player.vel.y), 2)
@@ -188,6 +201,13 @@ class Game:
                 if plat.rect.top >= HEIGHT + 40:
                     plat.kill()
                     self.score += 10
+            for mplat in self.movingplatform: 
+                # creates a slight scroll based on player y velocity\
+                # in the moving platforms
+                mplat.rect.y += max(abs(self.player.vel.y), 2)
+                if mplat.rect.top >= HEIGHT + 40:
+                    mplat.kill()
+                    self.score += 10
         # if player hits a power up
         pow_hits = pg.sprite.spritecollide(self.player, self.powerups, True)
         for pow in pow_hits:
@@ -195,6 +215,22 @@ class Game:
                 self.boost_sound.play()
                 self.player.vel.y = -BOOST_POWER
                 self.player.jumping = False
+        pow_hits = pg.sprite.spritecollide(self.player, self.powerups, True)
+        for pow in pow_hits:
+            if pow.type == 'rightboost':
+                self.boost_sound.play()
+                self.player.vel.y = -BOOST_POWER
+                self.player.jumping = False
+        #if player gets coin
+        coin_hits = pg.sprite.spritecollide(self.player, self.coin, True)
+        for coin in coin_hits:
+            if coin.type == 'coin':
+                self.boost_sound.play()
+                self.player.vel.y = -10
+                self.player.jumping = False
+                self.score += 10
+        for coin in self.coin:
+            coin.rect.x -= max(abs(self.player.vel.x), 2)
         
         # Die!
         if self.player.rect.bottom > HEIGHT:
@@ -206,17 +242,18 @@ class Game:
                     sprite.kill()
         if len(self.platforms) == 0:
             self.playing = False
+        if len(self.movingplatform) == 0:
+            self.playing = False
         # generate new random platforms
         while len(self.platforms) < 6:
             width = random.randrange(50, 100)
-            ''' removed widths and height params to allow for sprites '''
-            """ changed due to passing into groups through sprites lib file """
-            # p = Platform(self, random.randrange(0,WIDTH-width), 
-            #                 random.randrange(-75, -30))
             Platform(self, random.randrange(0,WIDTH-width), 
                             random.randrange(-75, -30))
-            # self.platforms.add(p)
-            # self.all_sprites.add(p)
+         #generates new random moving platforms
+        while len(self.movingplatform) < 6:
+            width = random.randrange(50, 100)
+            MovingPlatform(self, random.randrange(0,WIDTH-width), 
+                            random.randrange(-75, -30))
     def events(self):
         for event in pg.event.get():
                 if event.type == pg.QUIT:
@@ -252,7 +289,7 @@ class Game:
         """ # game splash screen """
         self.screen.fill(BLACK)
         self.draw_text(TITLE, 48, WHITE, WIDTH/2, HEIGHT/4)
-        self.draw_text("WASD to move, Space to jump", 22, WHITE, WIDTH/2, HEIGHT/2)
+        self.draw_text("AD to move, Space to jump", 22, WHITE, WIDTH/2, HEIGHT/2)
         self.draw_text("Press any key to play...", 22, WHITE, WIDTH / 2, HEIGHT * 3/4)
         self.draw_text("High score " + str(self.highscore), 22, WHITE, WIDTH / 2, 15)
         pg.display.flip()
@@ -264,7 +301,7 @@ class Game:
             return
         self.screen.fill(BLACK)
         self.draw_text(TITLE, 48, WHITE, WIDTH/2, HEIGHT/4)
-        self.draw_text("WASD to move, Space to jump", 22, WHITE, WIDTH/2, HEIGHT/2)
+        self.draw_text("AD to move, Space to jump, watch out for the enemies", 12, WHITE, WIDTH/2, HEIGHT/2)
         self.draw_text("Press any key to play...", 22, WHITE, WIDTH / 2, HEIGHT * 3/4)
         self.draw_text("High score " + str(self.highscore), 22, WHITE, WIDTH / 2, HEIGHT/2 + 40)
         if self.score > self.highscore:
@@ -275,8 +312,6 @@ class Game:
 
         else:
             self.draw_text("High score " + str(self.highscore), 22, WHITE, WIDTH / 2, HEIGHT/2 + 40)
-
-
         pg.display.flip()
         self.wait_for_key()
     def draw_text(self, text, size, color, x, y):
@@ -295,4 +330,4 @@ while g.running:
     try:
         g.show_go_screen()
     except:
-        print("can't load go screen...")            
+        print("can't load go screen...")                 

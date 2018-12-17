@@ -34,8 +34,6 @@ class Player(Sprite):
         self.current_frame = 0
         self.last_update = 0
         self.load_images()
-        # self.image = pg.Surface((30,40))
-        # self.image = self.game.spritesheet.get_image(614,1063,120,191)
         self.image = self.standing_frames[0]
         self.image.set_colorkey(BLACK)
         # self.image.fill(BLACK)
@@ -96,10 +94,19 @@ class Player(Sprite):
         # check pixel below
         self.rect.y += 2
         hits = pg.sprite.spritecollide(self, self.game.platforms, False)
+        mhits = pg.sprite.spritecollide(self, self.game.movingplatform, False)
         # adjust based on checked pixel
         self.rect.y -= 2
         # only allow jumping if player is on platform
         if hits and not self.jumping:
+            # play sound only when space bar is hit and while not jumping
+            self.game.jump_sound[choice([0,1])].play()
+            # tell the program that player is currently jumping
+            self.jumping = True
+            self.vel.y = -PLAYER_JUMP
+            print(self.acc.y)
+        #When it is jumping for the moving platform 
+        if mhits and not self.jumping:
             # play sound only when space bar is hit and while not jumping
             self.game.jump_sound[choice([0,1])].play()
             # tell the program that player is currently jumping
@@ -116,14 +123,6 @@ class Player(Sprite):
         if self.walking:
             if now - self.last_update > 200:
                 self.last_update = now
-                '''
-                assigns current frame based on the next frame and the remaining frames in the list.
-                If current frame is 'two' in a list with three elements, then:
-                2 + 1 = 3; 3 modulus 3 is zero, setting the animation back to its first frame.
-                If current frame is zero, then:
-                0 + 1 = 1; 1 modulus 3 is 1; 2 modulus 3 is 2; 3 modulus 3 is o
-
-                '''
                 self.current_frame = (self.current_frame + 1) % len(self.walk_frames_l)
                 bottom = self.rect.bottom
                 if self.vel.x > 0:
@@ -168,6 +167,8 @@ class Cloud(Sprite):
         self.rect.x += self.speed
         if self.rect.x > WIDTH:
             self.rect.x = -self.rect.width
+            self.rect.x = -self.rect.width
+# Platform Class 
 class Platform(Sprite):
     def __init__(self, game, x, y):
         # allows layering in LayeredUpdates sprite group
@@ -188,7 +189,38 @@ class Platform(Sprite):
         self.rect.y = y
         if random.randrange(100) < POW_SPAWN_PCT:
             Pow(self.game, self)
-
+        if random.randrange(100) < COIN_SPAWN_PCT:
+            Coin(self.game, self)
+#Moving Platform Class
+class MovingPlatform(Sprite):
+    def __init__(self, game, x, y):
+        # allows layering in LayeredUpdates sprite group
+        self._layer = MOVINGPFORM_LAYER
+        # add Platforms to game groups when instantiated
+        self.groups = game.all_sprites, game.movingplatform
+        Sprite.__init__(self, self.groups)
+        self.game = game
+        #images for the moving platform class
+        images = [self.game.spritesheet.get_image(0, 288, 380, 94), 
+                  self.game.spritesheet.get_image(213, 1662, 201, 100),
+                  self.game.spritesheet.get_image(0, 672, 380, 94),
+                  self.game.spritesheet.get_image(208, 1879, 201, 100)]
+        self.image = random.choice(images)
+        self.image.set_colorkey(BLACK)
+        self.rect = self.image.get_rect()
+        self.rect.x = randrange(WIDTH - self.rect.width)
+        self.rect.y = randrange(-500, -50)
+        self.speed = randrange(1,3)
+        #To spawn either right or left
+        self.speed = randrange(2,7)
+        self.ground_level = False
+    def update(self):
+        if self.rect.top > HEIGHT * 2: 
+            self.kill
+        self.rect.x += self.speed
+        if self.rect.x > WIDTH:
+            self.rect.x = -self.rect.width
+# Powerup Class 
 class Pow(Sprite):
     def __init__(self, game, plat):
         # allows layering in LayeredUpdates sprite group
@@ -209,6 +241,29 @@ class Pow(Sprite):
         # checks to see if plat is in the game's platforms group so we can kill the powerup instance
         if not self.game.platforms.has(self.plat):
             self.kill()
+
+# Coin class. If you get the coin you get 10 points added 
+class Coin(Sprite):
+    def __init__(self, game, plat):
+        # allows layering in LayeredUpdates sprite group
+        self._layer = POW_LAYER
+        # add a groups property where we can pass all instances of this object into game groups
+        self.groups = game.all_sprites, game.coin
+        Sprite.__init__(self, self.groups)
+        self.game = game
+        self.plat = plat
+        self.type = random.choice(['coin'])
+        self.image = self.game.spritesheet.get_image(698, 1931, 84, 84)
+        self.image.set_colorkey(BLACK)
+        self.rect = self.image.get_rect()
+        self.rect.centerx = self.plat.rect.centerx
+        self.rect.bottom = self.plat.rect.top - 5
+    def update(self):
+        self.rect.bottom = self.plat.rect.top - 5
+        # checks to see if plat is in the game's platforms group so we can kill the powerup instance
+        if not self.game.platforms.has(self.plat):
+            self.kill()
+# Mob class. Dont hit them or you will die 
 class Mob(Sprite):
     def __init__(self, game):
         # allows layering in LayeredUpdates sprite group
