@@ -20,11 +20,15 @@ Changed the background colors and the font color
 Changed the transparency 
 Raised the frequency of the enemies so there are more falling, and 
 instead of getting stuck there was more of a risk/reward factor on trying to jump on the enemy to get a boost
+Added moving platforms to give another gamplay feature. 
+The moving platforms are moving at a decent speed so, you have to keep moving if you land on one
+Also added coins so when you got a coin your score would increase by 10. 
+
+
 
 *****Personal Note
 I really enjoyed this class. At first, I was nervous that I would not know a lot considering I was way out of my comfort zone. 
 I started out not knowing anything, but I really learned a lot over the time in this semester. You made the class fun and enjoyable 
 with all of the projects I did. I did struggle at some points during this semester especially on this project. I would get frustrated
 over a part of code or even one line, but with the help of you, my peers, and the internet, I was able to figure out most of my problems,
-but this always posed a challenge for me. I just wanted to give a quick thank you to Shub and Jacob that were always there to help me. 
-Thank you Mr. Cozort for making this class fun, challenging, and enjoyable. 
+but this always posed a challenge for me. I just wanted to give a quick shout you to Shub and Jacob that were always there to help me. And to Julian Van Bruannae and Jack Armanini for helping me with my code outside of class.Thank you Mr. Cozort for making this class fun, challenging, and enjoyable. 
